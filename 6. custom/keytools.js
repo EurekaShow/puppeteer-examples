@@ -6,6 +6,7 @@
  *
  */
 const puppeteer = require('puppeteer')
+const nodejieba = require("nodejieba");
 try {
   (async () => {
   const browser = await puppeteer.launch( {headless: false,
@@ -14,16 +15,28 @@ try {
 
     await page.goto('http://www.baidu.com/')
     let keywrok = "小红书"
-    // for (var i=0;i<26;i++){
-    let i = 3
-    const input_area =await page.$("#kw");
-    await input_area.type(keywrok+String.fromCharCode(65+i));
-    await page.waitForSelector('#form');
-    const alltext = await page.$$eval('#form > div > ul > li',
-      anchors => {
-      return anchors.map(anchor => anchor.innerHTML.replace('<b>','').replace('</b>',''))
-    })
-    console.log('alltext:', alltext);
+    let result = []
+    let resultWord = []
+    const input_area = await page.$("#kw");
+    for (var i=0;i<26;i++) {
+      await input_area.type(keywrok + String.fromCharCode(65 + i),{ delay: 100 });
+      await page.waitForSelector('#form');
+      const alltext = await page.$$eval('#form > div > ul > li',
+        anchors => {
+          return anchors.map(anchor => anchor.innerHTML.replace('<b>', '').replace('</b>', ''))
+        })
+      result.push(...alltext)
+      for(var j=0;j<alltext.length;j++){
+        let word = nodejieba.cut(alltext[j]);
+        resultWord.push(...word)
+      }
+      await page.waitFor(5000)
+      await input_area.click({ clickCount: 3 })
+    }
+    const ra = Array.from(new Set(result))
+    console.log('result:', ra);
+    const raW = Array.from(new Set(resultWord))
+    console.log('resultWord:', raW);
 
   // await page.goto('http://www.bing.com/')
   // let keywrok = "小红书"
