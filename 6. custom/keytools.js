@@ -5,17 +5,74 @@
  * `GITHUB_USER=myuser GITHUB_PWD=mypassword node github.js`
  *
  */
+// const chromeLauncher = require('chrome-launcher');
+// const axios = require('axios');
 const puppeteer = require('puppeteer')
+// const puppeteer = require('puppeteer-core')
 const { load, cut } = require('@node-rs/jieba')
 const xlsx = require('xlsx');
+
+const fs = require("fs");
+const width = process.env.WIN_WIDTH || 1200;
+const height = process.env.WIN_HEIGHT || 1000;
+// const user_data_dir = '/checkchan/data/user_data';
+// if( !fs.existsSync( user_data_dir ) ) fs.mkdirSync( user_data_dir );
+
 try {
   (async () => {
   const browser = await puppeteer.launch( {headless: false,
     args: ['--no-sandbox', '--disable-se=tuid-sandbox', '--auto-open-devtools-for-tabs' ]})
-  const page = await browser.newPage()
+
+
+
+    // 手动初始化Chrome实例
+    // const chrome = await chromeLauncher.launch({
+    //   chromeFlags: ['--headless']
+    // });
+    // const response = await axios.get(`http://localhost:9222/json/version`);
+    // const { webSocketDebuggerUrl } = response.data;
+
+    // 使用“browserWSEndpoint”连接实例
+    // const browser = await puppeteer.connect({ browserWSEndpoint: webSocketDebuggerUrl });
+    // console.info(browser);
+
+
+
+    // let opt = {
+    //   args: ['--no-sandbox'],
+    //   defaultViewport: null,
+    //   headless: !(process.env.VDEBUG && process.env.VDEBUG == 'ON'),
+    //   timeout:1000+1000*10,
+    //   executablePath:process.env.CHROME_BIN||"/usr/bin/chromium-browser",
+    // };
+    //
+    // // if( item.ua )
+    // // {
+    // //   opt.args.push( `--user-agent=${item.ua}` );
+    // // }
+    //
+    // // 支持proxy
+    // if( process.env.PROXY_SERVER )
+    // {
+    //   opt.args.push( `--proxy-server=${process.env.PROXY_SERVER}` );
+    // }
+    //
+    // // console.log( opt );
+    //
+    // if( process.env.CHROMIUM_PATH )
+    //   opt['executablePath'] = process.env.CHROMIUM_PATH;
+    // const browser = await puppeteer.launch(opt);
+
+    // const browser = await puppeteer.launch( {
+    //   headless: false,
+    //   args: ['--no-sandbox','--start-maximized'],
+    //   executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    // })
+
+    const page = await browser.newPage()
 
     await page.goto('http://www.baidu.com/')
-    let keywrok = "小红书去水印"
+    let keywrok = "小红书"
     let result = []
     let resultWord = []
     const input_area = await page.$("#kw");
@@ -32,6 +89,24 @@ try {
       await page.waitFor(1000)
       await input_area.click({ clickCount: 3 })
     }
+    function keyCount(result) {
+      var obj = {};
+      var objs = new Set();
+      let ress = [];
+      for(let i= 0; i < result.length; i++){
+        let item = result[i];
+        obj[item] = (obj[item] +1 ) || 1;
+        objs.add(item);
+      }
+
+      for (let item of objs) {
+        ress.push({'key':item,'count':obj[item]})
+      }
+      return ress;
+    }
+
+    let ressults = keyCount(result);
+
 
     const ra = Array.from(new Set(result))
     // console.log('result:', ra);
@@ -42,16 +117,10 @@ try {
       resultWord.push(...word)
     }
 
-    const raW = Array.from(new Set(resultWord))
-    // console.log('resultWord:', raW);
+    let resultWords = keyCount(resultWord);
 
-    let x1 = ra.map(x=>new Array(x))
-    console.log(x1)
-    let x2 = raW.map(x=>new Array(x))
-    console.log(x2)
-
-    let sheet1 = xlsx.utils.aoa_to_sheet(x1);
-    let sheet2 = xlsx.utils.aoa_to_sheet(x2);
+    let sheet1 = xlsx.utils.json_to_sheet(ressults);
+    let sheet2 = xlsx.utils.json_to_sheet(resultWords);
 
     let workBook = {
       SheetNames: ['提示关键词','关键词分词'],
@@ -72,7 +141,7 @@ try {
   //   const alltext = await page.$$eval('.sa_drw > li', el => el.query);
   //   console.log('alltext:', alltext);
   // // }
-
+    browser.close()
 })()
 } catch (err) {
   console.error(err)
